@@ -1,0 +1,3 @@
+Lines of text: 390
+Romeo: 26
+Juliet: 27
