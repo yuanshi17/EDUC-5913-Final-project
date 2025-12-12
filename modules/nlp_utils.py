@@ -1,12 +1,14 @@
-"""
-nlp_utils.py
-Module for basic NLP analysis on cat sounds or user notes.
-"""
+# modules/nlp_utils.py
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
 
 def analyze_text(text):
-    """Perform simple NLP analysis (e.g., keywords, sentiment)"""
-    pass
+    """Return basic token analysis"""
+    doc = nlp(text)
+    return [(token.text, token.lemma_, token.pos_, token.is_stop) for token in doc]
 
-def summarize_notes(notes_list):
-    """Summarize multiple notes"""
-    pass
+def get_nouns(text):
+    """Return nouns in the text"""
+    doc = nlp(text)
+    return [token.text for token in doc if token.pos_ == "NOUN"]
