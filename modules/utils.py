@@ -1,12 +1,10 @@
-"""
-utils.py
-Helper functions for formatting, error handling, etc.
-"""
+# modules/utils.py
+from datetime import datetime
 
-def format_timestamp(ts):
-    """Return formatted timestamp string"""
-    pass
+def current_timestamp():
+    """Return current timestamp as string"""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-def check_positive(value):
-    """Ensure a number is positive"""
-    pass
+def format_weight(kg):
+    """Format weight with 2 decimal places"""
+    return f"{kg:.2f} kg"
