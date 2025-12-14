@@ -199,3 +199,124 @@ def plot_water_level_chart(df, alert_threshold=20):
     plt.tight_layout()
     
     return fig
+
+
+# ============ NEW: FEEDING RECORDS SIMULATION FUNCTIONS ============
+
+def generate_feeding_records(start_date="2024-12-13", days=7):
+    """
+    Generate 7-day feeding records with 3 meals per day.
+    
+    Parameters:
+    - start_date: Starting date for simulation (default: "2024-12-13")
+    - days: Number of days to simulate (default: 7)
+    
+    Returns:
+    - DataFrame with columns: timestamp, food_amount, cat_present, event_type
+    """
+    
+    feeding_times = [8, 15, 21]  # 8 AM, 3 PM, 9 PM
+    start = pd.to_datetime(start_date)
+    
+    feeding_records = []
+    
+    for day in range(days):
+        current_date = start + timedelta(days=day)
+        
+        for hour in feeding_times:
+            timestamp = current_date.replace(hour=hour, minute=0, second=0)
+            
+            # Food amount: approximately 50g ± 5g
+            food_amount = round(50 + np.random.uniform(-5, 5), 1)
+            
+            # Cat present: 90% probability
+            cat_present = np.random.random() < 0.9
+            
+            feeding_records.append({
+                'timestamp': timestamp,
+                'food_amount': food_amount,
+                'cat_present': cat_present,
+                'event_type': 'Feeding'
+            })
+    
+    return pd.DataFrame(feeding_records)
+
+
+def calculate_daily_feeding_stats(df):
+    """
+    Calculate daily feeding statistics.
+    
+    Parameters:
+    - df: DataFrame with feeding records
+    
+    Returns:
+    - DataFrame with daily statistics
+    """
+    
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['timestamp']).dt.date
+    
+    daily_stats = []
+    
+    for date in df['date'].unique():
+        day_data = df[df['date'] == date]
+        
+        total_food = day_data['food_amount'].sum()
+        total_feedings = len(day_data)
+        cat_present_count = day_data['cat_present'].sum()
+        presence_rate = (cat_present_count / total_feedings * 100) if total_feedings > 0 else 0
+        
+        daily_stats.append({
+            'date': date,
+            'total_food_g': round(total_food, 1),
+            'num_feedings': total_feedings,
+            'cat_present_count': int(cat_present_count),
+            'presence_rate_percent': round(presence_rate, 1),
+            'avg_food_per_meal_g': round(total_food / total_feedings, 1) if total_feedings > 0 else 0
+        })
+    
+    return pd.DataFrame(daily_stats)
+
+
+def plot_feeding_chart(df):
+    """
+    Plot feeding amounts over time with cat presence indicators.
+    
+    Parameters:
+    - df: DataFrame with feeding records
+    
+    Returns:
+    - matplotlib figure
+    """
+    fig, ax = plt.subplots(figsize=(12, 5))
+    
+    # Separate data by cat presence
+    present = df[df['cat_present'] == True]
+    absent = df[df['cat_present'] == False]
+    
+    # Plot feeding amounts
+    if not present.empty:
+        ax.scatter(present['timestamp'], present['food_amount'], 
+                  color='green', s=100, marker='o', label='Cat Present', alpha=0.7)
+    
+    if not absent.empty:
+        ax.scatter(absent['timestamp'], absent['food_amount'], 
+                  color='red', s=100, marker='x', label='Cat Absent', alpha=0.7)
+    
+    # Add average line
+    avg_food = df['food_amount'].mean()
+    ax.axhline(y=avg_food, color='blue', linestyle='--', 
+               linewidth=1.5, label=f'Average ({avg_food:.1f}g)', alpha=0.5)
+    
+    # Styling
+    ax.set_xlabel('Time', fontsize=12)
+    ax.set_ylabel('Food Amount (g)', fontsize=12)
+    ax.set_title('Feeding Records (7 Days - 3 Meals/Day)', fontsize=14, fontweight='bold')
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(40, 60)
+    
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    return fig
