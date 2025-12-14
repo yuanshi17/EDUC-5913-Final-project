@@ -1,23 +1,22 @@
-# modules/visualization.py
 import matplotlib.pyplot as plt
 
-def plot_water_level(df):
-    plt.figure(figsize=(10, 4))
-    plt.plot(df['time'], df['water_level_percent'], marker='o')
-    plt.title("Water Level Over Time")
-    plt.xlabel("Time")
-    plt.ylabel("Water Level (%)")
+def plot_line_chart(df, x, y, title="Line Chart"):
+    fig, ax = plt.subplots(figsize=(10,4))
+    for col in y:
+        ax.plot(df[x], df[col], marker="o", label=col)
+    ax.set_title(title)
+    ax.set_xlabel(x)
+    ax.set_ylabel("Amount")
+    ax.legend()
+    ax.grid(True)
     plt.xticks(rotation=45)
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    return fig
 
-def plot_feeding_amount(df):
-    plt.figure(figsize=(10, 4))
-    plt.bar(df['time'], df['food_amount_g'])
-    plt.title("Feeding Amount Over Time")
-    plt.xlabel("Time")
-    plt.ylabel("Food Amount (g)")
+def plot_bar_chart(df, x, y, title="Bar Chart"):
+    fig, ax = plt.subplots(figsize=(10,4))
+    ax.bar(df[x], df[y])
+    ax.set_title(title)
+    ax.set_xlabel(x)
+    ax.set_ylabel(y)
     plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+    return fig
