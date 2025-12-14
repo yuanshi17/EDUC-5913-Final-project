@@ -188,16 +188,118 @@ def plot_water_level_chart(df, alert_threshold=20):
 
 # ============ MAIN PAGE FUNCTION ============
 
+def generate_feeding_records(start_date="2024-12-13", days=7):
+    """
+    Generate 7-day feeding records with 3 meals per day.
+    
+    Parameters:
+    - start_date: Starting date for simulation (default: "2024-12-13")
+    - days: Number of days to simulate (default: 7)
+    
+    Returns:
+    - DataFrame with columns: timestamp, food_amount, cat_present, event_type
+    """
+    
+    feeding_times = [8, 15, 21]  # 8 AM, 3 PM, 9 PM
+    start = pd.to_datetime(start_date)
+    
+    feeding_records = []
+    
+    for day in range(days):
+        current_date = start + timedelta(days=day)
+        
+        for hour in feeding_times:
+            timestamp = current_date.replace(hour=hour, minute=0, second=0)
+            
+            # Food amount: approximately 50g ± 5g
+            food_amount = round(50 + np.random.uniform(-5, 5), 1)
+            
+            # Cat present: 90% probability
+            cat_present = np.random.random() < 0.9
+            
+            feeding_records.append({
+                'timestamp': timestamp,
+                'food_amount': food_amount,
+                'cat_present': cat_present,
+                'event_type': 'Feeding'
+            })
+    
+    return pd.DataFrame(feeding_records)
+
+
+def calculate_daily_feeding_stats(df):
+    """Calculate daily feeding statistics."""
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['timestamp']).dt.date
+    
+    daily_stats = []
+    
+    for date in df['date'].unique():
+        day_data = df[df['date'] == date]
+        
+        total_food = day_data['food_amount'].sum()
+        total_feedings = len(day_data)
+        cat_present_count = day_data['cat_present'].sum()
+        presence_rate = (cat_present_count / total_feedings * 100) if total_feedings > 0 else 0
+        
+        daily_stats.append({
+            'date': date,
+            'total_food_g': round(total_food, 1),
+            'num_feedings': total_feedings,
+            'cat_present_count': int(cat_present_count),
+            'presence_rate_percent': round(presence_rate, 1),
+            'avg_food_per_meal_g': round(total_food / total_feedings, 1) if total_feedings > 0 else 0
+        })
+    
+    return pd.DataFrame(daily_stats)
+
+
+def plot_feeding_chart(df):
+    """Plot feeding amounts over time with cat presence indicators."""
+    fig, ax = plt.subplots(figsize=(12, 5))
+    
+    # Separate data by cat presence
+    present = df[df['cat_present'] == True]
+    absent = df[df['cat_present'] == False]
+    
+    # Plot feeding amounts
+    if not present.empty:
+        ax.scatter(present['timestamp'], present['food_amount'], 
+                  color='green', s=100, marker='o', label='Cat Present', alpha=0.7)
+    
+    if not absent.empty:
+        ax.scatter(absent['timestamp'], absent['food_amount'], 
+                  color='red', s=100, marker='x', label='Cat Absent', alpha=0.7)
+    
+    # Add average line
+    avg_food = df['food_amount'].mean()
+    ax.axhline(y=avg_food, color='blue', linestyle='--', 
+               linewidth=1.5, label=f'Average ({avg_food:.1f}g)', alpha=0.5)
+    
+    # Styling
+    ax.set_xlabel('Time', fontsize=12)
+    ax.set_ylabel('Food Amount (g)', fontsize=12)
+    ax.set_title('Feeding Records (7 Days - 3 Meals/Day)', fontsize=14, fontweight='bold')
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(40, 60)
+    
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    return fig
+
+
 def food_tracker_page():
-    """Food Tracker Page with Water Level Simulation"""
+    """Food Tracker Page with Water Level Simulation and Feeding Records"""
     st.title("🍽️ Cat Food & Water Tracker")
     
-    # Create tabs for Food and Water tracking
-    tab1, tab2 = st.tabs(["🍽️ Food Tracker", "💧 Water Level Simulation"])
+    # Create tabs for Food tracking, Feeding Simulation, and Water tracking
+    tab1, tab2, tab3 = st.tabs(["🍽️ Manual Food Log", "🍖 Feeding Simulation", "💧 Water Level Simulation"])
     
-    # ============ TAB 1: FOOD TRACKER ============
+    # ============ TAB 1: MANUAL FOOD LOG ============
     with tab1:
-        st.subheader("Food Tracking")
+        st.subheader("📝 Manual Food Tracking")
         
         data_file = "data/feeding_log.csv"
         df = load_csv(data_file)
@@ -232,8 +334,157 @@ def food_tracker_page():
             st.success("✅ Record added successfully!")
             st.rerun()
     
-    # ============ TAB 2: WATER LEVEL SIMULATION ============
+    # ============ TAB 2: FEEDING SIMULATION ============
     with tab2:
+        st.subheader("🍖 Feeding Records Simulation (7 Days)")
+        st.markdown("""
+        This simulation generates feeding records for 7 days with:
+        - **3 meals per day** at **8 AM, 3 PM, and 9 PM**
+        - Food amount: **~50g ± 5g** per meal
+        - Cat presence: **90% probability**
+        - Total: **21 feeding events** over 7 days
+        """)
+        
+        # Simulation settings
+        col1, col2 = st.columns(2)
+        with col1:
+            feed_start_date = st.date_input("Simulation Start Date", 
+                                           value=pd.to_datetime("2024-12-13"),
+                                           key="feed_start_date")
+        with col2:
+            st.info("📅 **Feeding Schedule**\n- 🌅 8:00 AM\n- 🌤️ 3:00 PM\n- 🌙 9:00 PM")
+        
+        # Generate feeding simulation button
+        if st.button("🔄 Generate Feeding Simulation", type="primary"):
+            with st.spinner("Generating 7-day feeding records..."):
+                feeding_data = generate_feeding_records(start_date=str(feed_start_date), days=7)
+                save_csv(feeding_data, "data/feeding_simulation.csv")
+                st.session_state['feeding_data'] = feeding_data
+                st.success("✅ Simulation complete! 21 feeding events generated (3 meals/day × 7 days).")
+        
+        # Load existing or generate new data
+        feeding_file = "data/feeding_simulation.csv"
+        if 'feeding_data' not in st.session_state:
+            if os.path.exists(feeding_file):
+                st.session_state['feeding_data'] = load_csv(feeding_file)
+            else:
+                st.session_state['feeding_data'] = generate_feeding_records(
+                    start_date=str(feed_start_date), days=7)
+                save_csv(st.session_state['feeding_data'], feeding_file)
+        
+        feeding_df = st.session_state['feeding_data']
+        
+        if not feeding_df.empty:
+            # Convert timestamp
+            feeding_df['timestamp'] = pd.to_datetime(feeding_df['timestamp'])
+            
+            # Current status
+            st.subheader("📊 Feeding Summary")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                total_meals = len(feeding_df)
+                st.metric("Total Meals", total_meals)
+            with col2:
+                total_food = feeding_df['food_amount'].sum()
+                st.metric("Total Food", f"{total_food:.1f}g")
+            with col3:
+                present_count = feeding_df['cat_present'].sum()
+                st.metric("Cat Present", f"{int(present_count)}/{total_meals}")
+            with col4:
+                presence_rate = (present_count / total_meals * 100) if total_meals > 0 else 0
+                st.metric("Presence Rate", f"{presence_rate:.1f}%")
+            
+            # Feeding chart
+            st.subheader("📈 Feeding Records Over Time")
+            fig = plot_feeding_chart(feeding_df)
+            st.pyplot(fig)
+            
+            # Daily statistics
+            st.subheader("📅 Daily Feeding Statistics")
+            daily_feeding_stats = calculate_daily_feeding_stats(feeding_df)
+            st.dataframe(daily_feeding_stats, use_container_width=True)
+            
+            # Daily food bar chart
+            fig2, ax2 = plt.subplots(figsize=(10, 4))
+            ax2.bar(daily_feeding_stats['date'].astype(str), 
+                   daily_feeding_stats['total_food_g'], 
+                   color='#ff7f0e', alpha=0.8)
+            ax2.set_xlabel('Date', fontsize=11)
+            ax2.set_ylabel('Total Food (g)', fontsize=11)
+            ax2.set_title('Daily Food Consumption', fontsize=13, fontweight='bold')
+            ax2.grid(axis='y', alpha=0.3)
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            st.pyplot(fig2)
+            
+            # Feeding time analysis
+            st.subheader("🕐 Feeding Time Analysis")
+            feeding_df['hour'] = feeding_df['timestamp'].dt.hour
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Presence by time
+                time_presence = feeding_df.groupby('hour')['cat_present'].sum().reset_index()
+                time_presence.columns = ['hour', 'cat_present_count']
+                
+                fig3, ax3 = plt.subplots(figsize=(8, 4))
+                colors = ['#2ecc71' if h in [8, 15, 21] else '#95a5a6' 
+                         for h in time_presence['hour']]
+                ax3.bar(time_presence['hour'], time_presence['cat_present_count'], 
+                       color=colors, alpha=0.8)
+                ax3.set_xlabel('Hour of Day', fontsize=11)
+                ax3.set_ylabel('Cat Present Count', fontsize=11)
+                ax3.set_title('Cat Presence by Feeding Time', fontsize=12, fontweight='bold')
+                ax3.set_xticks([8, 15, 21])
+                ax3.grid(axis='y', alpha=0.3)
+                plt.tight_layout()
+                st.pyplot(fig3)
+            
+            with col2:
+                # Average food by time
+                time_food = feeding_df.groupby('hour')['food_amount'].mean().reset_index()
+                
+                fig4, ax4 = plt.subplots(figsize=(8, 4))
+                colors = ['#e74c3c' if h in [8, 15, 21] else '#95a5a6' 
+                         for h in time_food['hour']]
+                ax4.bar(time_food['hour'], time_food['food_amount'], 
+                       color=colors, alpha=0.8)
+                ax4.set_xlabel('Hour of Day', fontsize=11)
+                ax4.set_ylabel('Average Food (g)', fontsize=11)
+                ax4.set_title('Average Food Amount by Time', fontsize=12, fontweight='bold')
+                ax4.set_xticks([8, 15, 21])
+                ax4.grid(axis='y', alpha=0.3)
+                plt.tight_layout()
+                st.pyplot(fig4)
+            
+            # Detailed feeding log
+            with st.expander("📋 View All Feeding Records"):
+                st.dataframe(feeding_df, use_container_width=True)
+            
+            # Download data
+            st.subheader("💾 Export Feeding Data")
+            col1, col2 = st.columns(2)
+            with col1:
+                csv = feeding_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Feeding Records (CSV)",
+                    data=csv,
+                    file_name=f"feeding_simulation_{feed_start_date}.csv",
+                    mime="text/csv"
+                )
+            with col2:
+                daily_csv = daily_feeding_stats.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Daily Stats (CSV)",
+                    data=daily_csv,
+                    file_name=f"daily_feeding_stats_{feed_start_date}.csv",
+                    mime="text/csv"
+                )
+    
+    # ============ TAB 3: WATER LEVEL SIMULATION ============
+    with tab3:
         st.subheader("💧 Water Level Simulation (7 Days)")
         st.markdown("""
         This simulation tracks water levels over a 7-day period with:
