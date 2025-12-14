@@ -1,5 +1,13 @@
 # modules/nlp_utils.py
 from textblob import TextBlob
+import nltk
+
+# 自动下载必要的数据（只在第一次运行时）
+try:
+    nltk.data.find('corpora/brown')
+except LookupError:
+    nltk.download('brown', quiet=True)
+    nltk.download('punkt', quiet=True)
 
 def analyze_text_sentiment(text):
     """Return sentiment as Positive / Neutral / Negative"""
