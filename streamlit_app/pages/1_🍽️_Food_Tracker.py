@@ -1,4 +1,9 @@
 # streamlit_app/Food_Tracker.py
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# 然后是原来的导入
 import streamlit as st
 import pandas as pd
 from modules.data_loader import load_csv, save_csv

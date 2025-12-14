@@ -1,4 +1,9 @@
 # streamlit_app/Home.py
+import sys
+import os
+# 添加项目根目录到路径
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import streamlit as st
 import pandas as pd
 from modules.data_loader import load_csv, save_csv
