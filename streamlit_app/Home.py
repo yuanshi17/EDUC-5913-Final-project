@@ -27,8 +27,8 @@ def home_page():
     st.markdown("""
     <style>
     .big-title {
-        font-size: 3rem;
-        font-weight: bold;
+        font-size: 5rem;
+        font-weight: 800;
         color: #FF6B6B;
         text-align: center;
         margin-bottom: 1rem;
