@@ -344,9 +344,25 @@ def home_page():
                 entry_amount = st.text_input("📊 Amount", placeholder="e.g., 50g, 100ml, 15min", help="How much?")
                 entry_notes = st.text_input("📝 Notes", placeholder="Any details to remember?", help="Optional notes")
             
-            submitted = st.form_submit_button("➕ Add Activity", type="primary", use_container_width
-                    except Exception as e:
-                        st.error(f"❌ Couldn't save: {str(e)}")
+            submitted = st.form_submit_button("➕ Add Activity")
+            
+            if submitted:
+                try:
+                    new_row = {
+                        'date': entry_date.strftime('%Y-%m-%d'),
+                        'time': entry_time.strftime('%H:%M'),
+                        'activity': entry_activity,
+                        'cat_name': entry_cat if entry_cat else 'Unknown',
+                        'amount': entry_amount,
+                        'notes': entry_notes
+                    }
+                    new_df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True) if not df.empty else pd.DataFrame([new_row])
+                    save_csv(new_df, data_file)
+                    st.success("✅ Activity added!")
+                    st.balloons()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Couldn't save: {str(e)}")
         
         st.info("💡 **Tip**: You can add multiple activities one by one. The dashboard above updates automatically!")
 
