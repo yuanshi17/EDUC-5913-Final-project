@@ -5,39 +5,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 import streamlit as st
 
-def analyze_sentiment_textblob(text):
-    """Analyze sentiment using TextBlob - lightweight and accurate"""
-    try:
-        from textblob import TextBlob
-        
-        blob = TextBlob(text)
-        polarity = blob.sentiment.polarity
-        subjectivity = blob.sentiment.subjectivity
-        
-        # Enhanced thresholds for better accuracy
-        if polarity > 0.15:
-            sentiment = "Positive 😊"
-            color = "green"
-            description = "Your cat seems to be doing well!"
-        elif polarity < -0.15:
-            sentiment = "Negative 😟"
-            color = "red"
-            description = "This may indicate a concerning behavior."
-        else:
-            sentiment = "Neutral 😐"
-            color = "gray"
-            description = "Normal observation."
-            
-        return {
-            "sentiment": sentiment,
-            "polarity": polarity,
-            "subjectivity": subjectivity,
-            "color": color,
-            "description": description
-        }
-    except ImportError:
-        return None
-
 def analyze_sentiment_huggingface(text):
     """Analyze sentiment using Hugging Face Transformers - most accurate"""
     try:
@@ -73,6 +40,7 @@ def analyze_sentiment_huggingface(text):
             "description": description
         }
     except ImportError:
+        st.error("❌ Transformers not installed. Please install with: `pip install transformers torch`")
         return None
     except Exception as e:
         st.error(f"Error with Hugging Face model: {str(e)}")
@@ -87,14 +55,15 @@ def get_cat_specific_interpretation(text):
         'too much', 'vomit', 'lethargic', 'aggressive', 'hissing',
         'not eating', 'depressed', 'hiding', 'crying', 'limping',
         'blood', 'diarrhea', 'scratching excessively', 'biting',
-        'refusing', 'losing weight', 'not drinking'
+        'refusing', 'losing weight', 'not drinking', 'weak', 'sick',
+        'coughing', 'sneezing', 'discharge', 'bleeding', 'pain'
     ]
     
     # Positive indicators for cats
     positive_keywords = [
         'playful', 'energetic', 'purring', 'affectionate', 'happy',
         'eating well', 'healthy', 'active', 'grooming', 'curious',
-        'sleeping peacefully', 'good appetite'
+        'sleeping peacefully', 'good appetite', 'alert', 'friendly'
     ]
     
     negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
@@ -113,20 +82,19 @@ def behavior_analysis_page():
     st.title("🐾 Behavior Analysis")
     
     st.markdown("""
-    Analyze your cat's behavior notes to understand their emotional and physical state.
-    This tool uses AI to detect concerning behaviors or positive changes.
+    Analyze your cat's behavior notes using advanced AI to understand their emotional and physical state.
+    This tool detects concerning behaviors or positive changes.
     """)
 
     # Method selection
     st.subheader("🔧 Choose Analysis Method")
     method = st.radio(
-        "Select your preferred AI model:",
+        "Select your preferred analysis method:",
         [
-            "🤗 Hugging Face (Most Accurate - Recommended)",
-            "📝 TextBlob (Fast & Lightweight)",
+            "🤗 Hugging Face AI (Most Accurate - Recommended)",
             "🐱 Cat-Specific Keywords (Rule-based)"
         ],
-        help="Hugging Face uses advanced AI models for best accuracy"
+        help="Hugging Face uses state-of-the-art AI for best accuracy"
     )
 
     # Example notes
@@ -141,6 +109,7 @@ def behavior_analysis_page():
             - "Aggressive, hissing at everyone"
             - "Not eating or drinking for 2 days"
             - "Hiding under bed, refuses to come out"
+            - "Coughing and sneezing a lot"
             """)
         
         with col2:
@@ -151,6 +120,7 @@ def behavior_analysis_page():
             - "Great appetite and sleeping peacefully"
             - "Curious and exploring, seems healthy"
             - "Grooming regularly and active"
+            - "Alert and responsive to playtime"
             """)
     
     st.markdown("---")
@@ -171,21 +141,36 @@ def behavior_analysis_page():
         if note.strip() == "":
             st.warning("⚠️ Please enter some notes to analyze!")
         else:
-            with st.spinner("Analyzing sentiment..."):
+            with st.spinner("Analyzing sentiment with AI..."):
                 result = None
                 
                 # Choose analysis method
                 if "Hugging Face" in method:
                     result = analyze_sentiment_huggingface(note)
                     if result is None:
-                        st.error("❌ Hugging Face not available. Install with: `pip install transformers torch`")
-                        st.info("Falling back to TextBlob analysis...")
-                        result = analyze_sentiment_textblob(note)
-                
-                elif "TextBlob" in method:
-                    result = analyze_sentiment_textblob(note)
-                    if result is None:
-                        st.error("❌ TextBlob not available. Install with: `pip install textblob`")
+                        st.info("Falling back to Cat-Specific Keywords analysis...")
+                        cat_sentiment, keyword_count = get_cat_specific_interpretation(note)
+                        if cat_sentiment == "negative":
+                            result = {
+                                "sentiment": "Negative 😟",
+                                "color": "red",
+                                "description": f"Found {keyword_count} concerning keyword(s)",
+                                "keywords": keyword_count
+                            }
+                        elif cat_sentiment == "positive":
+                            result = {
+                                "sentiment": "Positive 😊",
+                                "color": "green",
+                                "description": f"Found {keyword_count} positive keyword(s)",
+                                "keywords": keyword_count
+                            }
+                        else:
+                            result = {
+                                "sentiment": "Neutral 😐",
+                                "color": "gray",
+                                "description": "No strong indicators detected",
+                                "keywords": 0
+                            }
                 
                 else:  # Cat-Specific Keywords
                     cat_sentiment, keyword_count = get_cat_specific_interpretation(note)
@@ -222,55 +207,51 @@ def behavior_analysis_page():
                     
                     # Detailed metrics
                     if "confidence" in result:
-                        st.markdown("#### 🎯 Confidence Score")
+                        st.markdown("#### 🎯 AI Confidence Score")
                         st.progress(result['confidence'])
-                        st.caption(f"Model is {result['confidence']:.1%} confident in this prediction")
-                    
-                    elif "polarity" in result:
-                        st.markdown("#### 📈 Sentiment Scores")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.metric("Polarity", f"{result['polarity']:.3f}", 
-                                     help="Range: -1 (negative) to +1 (positive)")
-                        with col2:
-                            st.metric("Subjectivity", f"{result['subjectivity']:.3f}",
-                                     help="Range: 0 (objective) to 1 (subjective)")
+                        st.caption(f"The AI model is {result['confidence']:.1%} confident in this prediction")
+                        
+                        # Show the raw label
+                        st.metric("AI Classification", result['label'])
                     
                     elif "keywords" in result:
-                        st.markdown("#### 🔑 Keywords Found")
-                        st.metric("Relevant Keywords", result['keywords'])
+                        st.markdown("#### 🔑 Keywords Analysis")
+                        st.metric("Relevant Keywords Found", result['keywords'])
                     
                     # Health recommendations
                     st.markdown("---")
-                    st.subheader("💡 Recommendations")
+                    st.subheader("💡 Veterinary Recommendations")
                     
                     if result['color'] == 'red':
                         st.error("""
                         **🚨 Concerning Behavior Detected**
                         
                         **Immediate Actions:**
-                        - Monitor your cat closely for the next 24-48 hours
-                        - Check eating, drinking, and litter box habits
-                        - Look for other symptoms (lethargy, vomiting, etc.)
-                        - Keep a behavior log with timestamps
+                        - 📝 Monitor your cat closely for the next 24-48 hours
+                        - 🍽️ Check eating, drinking, and litter box habits
+                        - 🔍 Look for other symptoms (lethargy, vomiting, diarrhea)
+                        - 📊 Keep a detailed behavior log with timestamps
+                        - 🌡️ Check temperature if possible (normal: 100.5-102.5°F)
                         
-                        **When to Contact Vet:**
-                        - Symptoms persist for more than 24 hours
-                        - Cat refuses food/water for 12+ hours
-                        - Shows signs of pain or distress
-                        - Any sudden behavioral changes
+                        **Contact Your Vet If:**
+                        - ⏰ Symptoms persist for more than 24 hours
+                        - 🚫 Cat refuses food/water for 12+ hours
+                        - 😣 Shows signs of pain or severe distress
+                        - ⚡ Any sudden or dramatic behavioral changes
+                        - 🆘 Difficulty breathing, bleeding, or seizures
                         """)
                         
                     elif result['color'] == 'green':
                         st.success("""
                         **✅ Positive Behavior Noted**
                         
-                        **Keep It Up:**
-                        - Continue current routine and diet
-                        - Maintain regular play sessions
-                        - Ensure fresh water is always available
-                        - Schedule regular vet check-ups
-                        - Keep tracking behaviors for patterns
+                        **Keep Up The Good Work:**
+                        - 🍽️ Continue current routine and balanced diet
+                        - 🎾 Maintain regular play sessions (15-20 min daily)
+                        - 💧 Ensure fresh water is always available
+                        - 🏥 Schedule regular vet check-ups (annual or bi-annual)
+                        - 📝 Keep tracking behaviors for long-term patterns
+                        - 🧼 Maintain regular grooming and litter box cleaning
                         """)
                         
                     else:
@@ -278,10 +259,35 @@ def behavior_analysis_page():
                         **ℹ️ Neutral Observation**
                         
                         **Continue Monitoring:**
-                        - Normal daily activity noted
-                        - Keep observing for any changes
-                        - Maintain regular care routine
-                        - Log behaviors for future reference
+                        - 👀 Normal daily activity noted
+                        - 📊 Keep observing for any changes
+                        - ✅ Maintain regular care routine
+                        - 📝 Log behaviors for future reference
+                        - 🔔 Watch for any patterns over time
+                        """)
+                    
+                    # Additional tips
+                    with st.expander("📚 Additional Cat Care Tips"):
+                        st.markdown("""
+                        ### General Cat Health Indicators
+                        
+                        **Healthy Cat Signs:**
+                        - Clear, bright eyes
+                        - Clean ears with no odor
+                        - Healthy coat (shiny, no bald patches)
+                        - Pink gums
+                        - Normal breathing (20-30 breaths/min at rest)
+                        - Regular eating and drinking
+                        
+                        **Warning Signs to Watch:**
+                        - Changes in appetite or thirst
+                        - Weight loss or gain
+                        - Changes in litter box habits
+                        - Excessive vocalization
+                        - Hiding or withdrawal
+                        - Vomiting or diarrhea
+                        - Difficulty breathing
+                        - Lethargy or decreased activity
                         """)
 
     # Installation guide
@@ -290,40 +296,28 @@ def behavior_analysis_page():
         st.markdown("""
         ### 📦 Required Libraries
         
-        Choose one or both methods:
+        This feature requires Hugging Face Transformers:
         
-        #### Option 1: Hugging Face (Recommended - Most Accurate)
         ```bash
         pip install transformers torch
-        ```
-        
-        #### Option 2: TextBlob (Lightweight Alternative)
-        ```bash
-        pip install textblob
-        python -m textblob.download_corpora
-        ```
-        
-        #### Option 3: Both (Best of Both Worlds)
-        ```bash
-        pip install transformers torch textblob
-        python -m textblob.download_corpora
         ```
         
         ### 📄 Add to requirements.txt
         ```
         transformers
         torch
-        textblob
         ```
         
-        ### ✅ Why These Libraries?
-        - **100% Free & Open Source**
-        - **No API Keys Required**
-        - **Works Offline**
-        - **State-of-the-art Accuracy**
-        - **Widely Used & Well-Maintained**
+        ### ✅ Why Hugging Face Transformers?
+        - 🎯 **Most Accurate**: State-of-the-art AI models
+        - 🆓 **100% Free & Open Source**
+        - 🔑 **No API Keys Required**
+        - 💻 **Works Offline** after initial model download
+        - 🧠 **Context Understanding**: Correctly identifies "too much" as negative
+        - 🌍 **Widely Used**: Millions of downloads, well-maintained
         
-        The Hugging Face model correctly understands context like "too much" as negative!
+        ### 🚀 First Run Note
+        On first use, the model will download (~250MB). This happens once and then runs locally.
         """)
 
 if __name__ == "__main__":
