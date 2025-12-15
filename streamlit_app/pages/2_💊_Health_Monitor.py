@@ -1,9 +1,9 @@
-# streamlit_app/Health_Monitor.py
+# streamlit_app/pages/2_💊_Health_Monitor.py
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# 然后是原来的导入
+# Then import the original modules
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,16 +12,16 @@ from modules.data_loader import load_csv, save_csv
 def health_monitor_page():
     """Cat Health Monitor Page"""
 
-    # 页面标题
+    # Page title
     st.title("🐱 Cat Health Monitor")
 
-    # 数据文件
+    # Data file
     data_file = "data/feeding_log.csv"
 
-    # 加载数据
+    # Load data
     df = load_csv(data_file)
 
-    # 显示最新状态
+    # Display latest status
     st.subheader("📊 Current Status")
     if df.empty:
         st.info("No data available yet. Add feeding/water records first!")
@@ -31,7 +31,7 @@ def health_monitor_page():
         st.metric("Water Remaining (ml)", latest.get("water_amount_ml", 0))
         st.metric("Weight (kg)", latest.get("weight_kg", "N/A"))
 
-    # 绘制历史趋势图
+    # Plot historical trend chart
     if not df.empty:
         st.subheader("📈 Historical Trends")
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -50,7 +50,7 @@ def health_monitor_page():
         plt.xticks(rotation=45)
         st.pyplot(fig)
 
-    # 下载数据按钮
+    # Download data button
     st.subheader("💾 Download Data")
     if st.button("Download CSV"):
         csv = df.to_csv(index=False).encode("utf-8")
