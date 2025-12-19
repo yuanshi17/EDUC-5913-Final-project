@@ -2,7 +2,7 @@
 from textblob import TextBlob
 import nltk
 
-# 自动下载必要的数据（只在第一次运行时）
+# Auto-downloading necessary data
 try:
     nltk.data.find('corpora/brown')
 except LookupError:
